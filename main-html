@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Nội Bộ - Đăng nhập để xem</title>
+    <style>
+        :root { --primary-color: #4285f4; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        #app-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 900px; text-align: center; }
+        .hidden { display: none !important; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-bottom: 20px; border-radius: 8px; background: #000; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        button { cursor: pointer; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; transition: 0.3s; }
+        #btn-login { background: var(--primary-color); color: white; font-size: 1.1rem; }
+        #btn-logout { background: #e74c3c; color: white; margin-top: 10px; }
+        textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; resize: vertical; }
+        #btn-submit { background: #2ecc71; color: white; margin-top: 10px; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="guest-view">
+        <h1>Nội dung giới hạn</h1>
+        <p>Vui lòng đăng nhập bằng tài khoản Google của bạn để xem video này.</p>
+        <button id="btn-login">Đăng nhập với Google</button>
+    </div>
+
+    <div id="member-view" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <span>Xin chào, <strong id="user-display-name"></strong></span>
+            <button id="btn-logout">Đăng xuất</button>
+        </div>
+
+        <div class="video-wrapper">
+            <iframe id="video-player" src="" allow="autoplay"></iframe>
+        </div>
+
+        <div style="text-align: left;">
+            <label><strong>Đánh giá video:</strong></label>
+            <textarea id="review-input" placeholder="Chia sẻ ý kiến của bạn..."></textarea>
+            <button id="btn-submit">Gửi đánh giá</button>
+            <p id="msg" style="color: green;"></p>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+    // CẤU HÌNH FIREBASE CỦA BẠN
+    const firebaseConfig = {
+        apiKey: "AIzaSy...", 
+        authDomain: "your-app.firebaseapp.com",
+        projectId: "your-app",
+        storageBucket: "your-app.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abcdef"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    const guestView = document.getElementById('guest-view');
+    const memberView = document.getElementById('member-view');
+    const videoPlayer = document.getElementById('video-player');
+    const VIDEO_URL = "https://drive.google.com/file/d/YOUR_FILE_ID/preview";
+
+    // Lắng nghe trạng thái người dùng
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // Hiển thị nội dung cho thành viên
+            guestView.classList.add('hidden');
+            memberView.classList.remove('hidden');
+            document.getElementById('user-display-name').innerText = user.displayName;
+            videoPlayer.src = VIDEO_URL; // Chỉ gán link video khi đã đăng nhập
+        } else {
+            // Hiển thị màn hình chào
+            guestView.classList.remove('hidden');
+            memberView.classList.add('hidden');
+            videoPlayer.src = ""; // Xóa link video khi thoát
+        }
+    });
+
+    // Sự kiện Đăng nhập/Đăng xuất
+    document.getElementById('btn-login').onclick = () => signInWithPopup(auth, provider);
+    document.getElementById('btn-logout').onclick = () => {
+        if(confirm("Bạn muốn đăng xuất?")) signOut(auth);
+    };
+
+    // Gửi đánh giá
+    document.getElementById('btn-submit').onclick = async () => {
+        const content = document.getElementById('review-input').value;
+        if(!content) return;
+
+        try {
+            await addDoc(collection(db, "reviews"), {
+                user: auth.currentUser.displayName,
+                email: auth.currentUser.email,
+                comment: content,
+                createdAt: serverTimestamp()
+            });
+            document.getElementById('msg').innerText = "Cảm ơn bạn đã đánh giá!";
+            document.getElementById('review-input').value = "";
+        } catch (err) {
+            alert("Lỗi khi gửi: " + err.message);
+        }
+    };
+</script>
+</body>
+</html>
