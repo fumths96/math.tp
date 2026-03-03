@@ -1,0 +1,9 @@
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Chỉ cho phép người dùng đã đăng nhập Google mới được gửi đánh giá
+    match /reviews/{reviewId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null; // Có thể chỉnh thành admin mới đọc được
+    }
+  }
+}
